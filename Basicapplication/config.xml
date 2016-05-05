@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets" id="http://yourdomain/Basicapplication" version="1.0.0" viewmodes="maximized">
+<access origin="*" subdomains="true"></access>
+    <tizen:application id="rcwtICQaZu.Basicapplication" package="rcwtICQaZu" required_version="2.3"/>
+    <content src="index.html"/>
+    <feature name="http://tizen.org/feature/screen.size.all"/>
+    <feature name="http://tizen.org/feature/sensor.heart_rate_monitor"/>
+    <feature name="http://tizen.org/feature/network.internet"/>
+    <icon src="ic_launcher.png" height="117" width="117"/>
+    <name>Basicapplication</name>
+    <tizen:privilege name="http://tizen.org/privilege/healthinfo"/>
+    <tizen:privilege name="http://tizen.org/privilege/internet"/>
+    <tizen:profile name="wearable"/>
+   
+</widget>

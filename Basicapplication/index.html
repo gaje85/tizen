@@ -1,0 +1,38 @@
+ <html>
+<head>
+	<meta name="viewport" content="width=device-width,user-scalable=no"/>
+	<title>Wearable UI</title>
+	<link rel="stylesheet"  href="css/tau.min.css"> 
+	<link rel="stylesheet"  href="css/style.css">
+</head>
+<script>
+
+</script>
+<body>
+ 
+<div class=contents>
+  	<div style='margin:auto;'>
+  	 <p><input type="text" id="mytextbox" size="20" value="Mozilla"/></p>
+  <p><button onclick="SelectText()">send heartrate</button></p>
+  		<span class=content_text id=textbox>Basic</span>  
+  		
+  	</div>
+  </div>
+	<div class="ui-page ui-page-active" id="main">
+		<header class="ui-header">
+			<h2 class="ui-title">Simple Sensor</h2>
+		</header>
+		<div class="ui-content content-padding">
+				
+			<ul class="ui-listview">
+			    <p id="calories" style="font-size: 20px "> Getting Heartrate Data </p>
+			
+			</ul>
+		</div>
+	</div>
+</body>
+
+<!-- load javascript file for your application -->
+<script src="js/main.js"></script>
+
+</html>
