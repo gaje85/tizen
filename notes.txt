@@ -1,0 +1,1026 @@
+
+
+  Gajendran
+  16 
+
+  MTS 2 
+
+  
+  Apache Lucene 
+
+   java API
+
+  HTTP Layer 
+  
+  Solr
+
+   1 billion document 
+     0.22 secs 
+
+
+elasticsearch
+-------------
+
+Shay Banon creator of elasticsearch.
+Initially called Compass.FEB 2010
+
+JSON document 
+
+
+installting and running 
+-----------------------
+JDK 1.8
+run elasticsearch.bat
+
+http://localhost:9200/?pretty
+
+install kibana and sense plugin
+
+bin\kibana.bat plugin --install elastic/sense
+
+start kibana
+
+open sense http://localhost:5601/app/sense
+
+Head plugin inside elasticsearch
+
+plugin install mobz/elasticsearch-head
+
+http://localhost:9200/_plugin/head/
+
+--------------------------------------------------------------
+
+Talk to elasticsearch
+
+1) Node client 
+2) Transport client
+port 9300 and cluster communication is also via 9300
+1) Resource identification
+2) Using HTTP verbs 
+3) HATEOAS
+REST API to elasticsearch
+
+curl -X<VERB> '<PROTOCOL>://<HOST>:<PORT>/<PATH>?
+	<QUERY_STRING>' -d '<BODY>'
+
+_count , _cluster/stats , _nodes/stats/jvm 
+
+To count no of documents in cluster use
+
+curl -XGET 'http://localhost:9200/_count?pretty' -d '
+{
+    "query": {
+        "match_all": {}
+    }
+}
+
+In sense console
+
+GET /_count
+{
+    "query": {
+        "match_all": {}
+    }
+}
+
+-------------------------------------------------------------------------------------
+
+1) The act of storing data in Elasticsearch is called indexing
+
+Relational DB  ? Databases ? Tables ? Rows      ? Columns
+Elasticsearch  ? Indices   ? Types  ? Documents ? Fields
+
+Inverted index - just like DB index
+
+simple index and document creation 
+-----------------------------------
+PUT /megacorp/employee/1
+{
+    "first_name" : "John",
+    "last_name" :  "Smith",
+    "age" :        25,
+    "about" :      "I love to go rock climbing",
+    "interests": [ "sports", "music" ]
+}
+
+PUT /megacorp/employee/2
+{
+    "first_name" :  "Jane",
+    "last_name" :   "Smith",
+    "age" :         32,
+    "about" :       "I like to collect rock albums",
+    "interests":  [ "music" ]
+}
+
+PUT /megacorp/employee/3
+{
+    "first_name" :  "Douglas",
+    "last_name" :   "Fir",
+    "age" :         35,
+    "about":        "I like to build cabinets",
+    "interests":  [ "forestry" ]
+}
+
+Use HTTP verbs to do CRUD operations
+
+GET /megacorp/employee/1
+GET /megacorp/employee/_search
+GET /megacorp/employee/_search?q=last_name:Smith
+GET /megacorp/employee/_search
+{
+    "query" : {
+        "match" : {
+            "last_name" : "Smith"
+	    
+        }
+    }
+}
+
+complicated search using query DSL
+----------------------------------
+GET /megacorp/employee/_search
+{
+    "query" : {
+        "filtered" : {
+            "filter" : {
+                "range" : {
+                    "age" : { "gt" : 30 } 
+                }
+            },
+            "query" : {
+                "match" : {
+                    "last_name" : "smith" 
+                }
+            }
+        }
+
+    }
+}
+
+Full text search
+----------------
+GET /megacorp/employee/_search
+{
+    "query" : {
+        "match" : {
+            "about" : "rock climbing"
+        }
+    }
+}
+
+phrase search (exact match)
+---------------------------
+
+GET /megacorp/employee/_search
+{
+    "query" : {
+        "match_phrase" : {
+            "about" : "rock climbing"
+        }
+    }
+}
+
+HTML Highlighting
+-----------------
+GET /megacorp/employee/_search
+{
+    "query" : {
+        "match_phrase" : {
+            "about" : "rock climbing"
+        }
+    },
+    "highlight": {
+        "fields" : {
+            "about" : {}
+        }
+    }
+}
+
+Basic Analytics
+---------------
+
+GET /megacorp/employee/_search
+{
+  "aggs": {
+    "all_interests": {
+      "terms": { "field": "interests" }
+    }
+  }
+}
+
+GET /megacorp/employee/_search
+{
+  "query": {
+    "match": {
+      "last_name": "smith"
+    }
+  },
+  "aggs": {
+    "all_interests": {
+      "terms": {
+        "field": "interests"
+      }
+    }
+  }
+}
+
+
+GET /megacorp/employee/_search
+{
+    "aggs" : {
+        "all_interests" : {
+            "terms" : { "field" : "interests" },
+            "aggs" : {
+                "avg_age" : {
+                    "avg" : { "field" : "age" }
+                }
+            }
+        }
+    }
+}
+
+
+Clusters introduction 
+---------------------
+
+Start 2 nodes in the same machine 
+
+GET /_cluster/health
+
+index - logical namespace that points to one or more physical shards
+
+  1 index -- splitted into 5 shards
+
+  3 machines 
+
+ 1		2		3
+
+S1,S2       S4,S3              S5
+
+RS5,RS3      RS1,RS2          RS4
+
+1 replication for each and every shard
+
+
+ 
+
+Shard - A shard is a low-level worker unit that holds just a slice of all the data in the index.
+        shard is a single instance of Lucene, and is a complete search engine in its own right.
+        Our documents are stored and indexed in shards, but our applications don’t talk to them directly.
+        Instead, they talk to an index.
+	Think of shards as containers for data.
+        Documents are stored in shards, and shards are allocated to nodes in your cluster.
+	As your cluster grows or shrinks, Elasticsearch will automatically migrate shards between nodes 
+        so that the cluster remains balanced.
+        Primary and replica shard
+	
+  PUT /blogs
+{
+   "settings" : {
+      "number_of_shards" : 3, (by default 5 shards)
+      "number_of_replicas" : 1
+   }
+}
+  check cluster health GET /_cluster/health
+
+start second node in the same machine and now see the cluster health again .
+
+Scale Horizontally
+------------------
+Change settings at runtime 
+PUT /blogs/_settings
+{
+   "number_of_replicas" : 2
+}
+
+
+Document creation and CRUD 
+--------------------------
+
+Every document will have a metadata of 
+
+_index
+Where the document lives
+
+_type
+The class of object that the document represents
+
+_id
+The unique identifier for the document
+
+
+ our data is stored and indexed in shards,
+ index is just a logical namespace that groups together one or more shards
+ 
+
+Indexing a document 
+-------------------
+
+PUT /{index}/{type}/{id}
+{
+  "field": "value",
+  
+}
+
+	Auto generate id 
+
+POST /website/blog/
+{
+  "title": "My second blog entry",
+  "text":  "Still trying this out...",
+  "date":  "2014/01/01"
+}
+
+get the document 
+----------------
+
+GET /website/blog/123?pretty
+
+get some fields of document 
+
+GET /website/blog/123?_source=title,text
+
+GET /website/blog/123/_source
+
+Check if document exists
+------------------------
+
+curl -i -XHEAD http://localhost:9200/website/blog/123 ( Using postmen to send this req to elasticsearch)
+
+
+Updating the document 
+---------------------
+Documents in Elasticsearch are immutable
+ we reindex or replace it
+PUT /website/blog/123
+{
+  "title": "My first blog entry",
+  "text":  "I am starting to get the hang of this...",
+  "date":  "2014/01/02"
+}
+The sequence of operations :
+
+Retrieve the JSON from the old document
+Change it
+Delete the old document
+Index a new document
+
+If document is not there create it else send exception
+
+PUT /website/blog/123?op_type=create
+{ ... }
+
+PUT /website/blog/123/_create
+{ ... }
+
+Delete the document 
+--------------------
+DELETE /website/blog/123
+
+
+Elasticsearch uses optimistic concurrency 
+control
+
+PUT /website/blog/1?version=1 
+
+partial updates to document schema
+---------------------------------
+POST /website/blog/1/_update
+{
+   "doc" : {
+      "tags" : [ "testing" ],
+      "views": 0
+   }
+}
+
+Retrieving Multiple Document
+----------------------------
+mget api
+
+GET /website/blog/_mget
+{
+   "docs" : [
+      { "_id" : 2 },
+      { "_type" : "pageviews", "_id" :   1 }
+   ]
+}
+
+GET /website/blog/_mget
+{
+   "ids" : [ "2", "1" ]
+}
+
+Bulk API
+-------
+{ action: { metadata }}\n
+{ request body        }\n
+{ action: { metadata }}\n
+{ request body        }\n
+...
+
+POST /_bulk
+{ "delete": { "_index": "website", "_type": "blog", "_id": "123" }} 
+{ "create": { "_index": "website", "_type": "blog", "_id": "123" }}
+{ "title":    "My first blog post" }
+{ "index":  { "_index": "website", "_type": "blog" }}
+{ "title":    "My second blog post" }
+{ "update": { "_index": "website", "_type": "blog", "_id": "123", "_retry_on_conflict" : 3} }
+{ "doc" : {"title" : "My updated blog post"} } 
+
+
+Lucene text analysers
+----------------------
+
+ mmapfs on Windows 64bit, 
+ simplefs on Windows 32bit(Lucene's SimpleFsDirectory), 
+ and default (hybrid niofs(NIOFSDirectory) and mmapfs(MMapDirectory)) for the rest of OS's.
+
+PUT /my_index
+{
+  "settings": {
+    "index.store.type": "niofs"
+  }
+}
+
+analyzer in Lucene is 
+tokenizer + stemmer + stop-words filter
+
+Tokenizer splits your text into chunks,StandardAnalyzer uses this to split the text using space etc
+Stemmers are used to get the base of a word in question.KeywordAnalyzer  does not use it
+Stop words are the most frequent and almost useless words
+
+Analysis is a process that consists of the following:
+
+First, tokenizing a block of text into individual terms suitable for use in an inverted index,
+Then normalizing these terms into a standard form to improve their “searchability,” or recall
+
+Character filters
+First, the string is passed through any character filters in turn. 
+Their job is to tidy up the string before tokenization. 
+A character filter could be used to strip out HTML, or to convert & characters to the word and.
+
+Tokenizer
+Next, the string is tokenized into individual terms by a tokenizer. 
+A simple tokenizer might split the text into terms whenever it encounters whitespace or punctuation.
+
+Token filters
+Last, each term is passed through any token filters in turn, which can change terms 
+(for example, lowercasing Quick), remove terms (for example, stopwords such as a, and, the) 
+or add terms (for example, synonyms like jump and leap).
+
+sample data
+"Set the shape to semi-transparent by calling set_trans(5)"
+
+Build in analysers
+-------------------
+Standard analyzer (default)
+ he standard analyzer is the default analyzer that Elasticsearch uses. It is the best general choice for 
+analyzing text that may be in any language. It splits the text on word boundaries, as defined by the 
+Unicode Consortium, and removes most punctuation. Finally, it lowercases all terms.
+
+set, the, shape, to, semi, transparent, by, calling, set_trans, 5
+
+Simple analyzer
+The simple analyzer splits the text on anything that isn’t a letter, and lowercases the terms.
+ It would produce
+set, the, shape, to, semi, transparent, by, calling, set, trans
+
+Whitespace analyzer
+The whitespace analyzer splits the text on whitespace. It doesn’t lowercase. 
+Language analyzers
+Set, the, shape, to, semi-transparent, by, calling, set_trans(5)
+
+Language analyzers
+Language-specific analyzers are available for many languages. They are able to take the peculiarities 
+of the specified language into account. For instance, the english analyzer comes with a set of 
+English stopwords (common words like and or the that don’t have much impact on relevance), which it removes.
+
+set, shape, semi, transpar, call, set_tran, 5
+
+Mahout , tika 
+
+GET /_search?q=2014    
+GET /_search?q=date:2014-09-15 
+GET /_search?q=date:2014   
+
+
+Test the analyzer
+-----------------
+GET /_analyze
+{
+  "analyzer" : "standard",
+  "text" : ["this is a test", "the second text"]
+} 
+
+
+Sample Data
+-----------
+
+POST /_bulk
+{ "create": { "_index": "us", "_type": "user", "_id": "1" }}
+{ "email" : "john@smith.com", "name" : "John Smith", "username" : "@john" }
+{ "create": { "_index": "gb", "_type": "user", "_id": "2" }}
+{ "email" : "mary@jones.com", "name" : "Mary Jones", "username" : "@mary" }
+{ "create": { "_index": "gb", "_type": "tweet", "_id": "3" }}
+{ "date" : "2014-09-13", "name" : "Mary Jones", "tweet" : "Elasticsearch means full text search has never been so easy", "user_id" : 2 }
+{ "create": { "_index": "us", "_type": "tweet", "_id": "4" }}
+{ "date" : "2014-09-14", "name" : "John Smith", "tweet" : "@mary it is not just text, it does everything", "user_id" : 1 }
+{ "create": { "_index": "gb", "_type": "tweet", "_id": "5" }}
+{ "date" : "2014-09-15", "name" : "Mary Jones", "tweet" : "However did I manage before Elasticsearch?", "user_id" : 2 }
+{ "create": { "_index": "us", "_type": "tweet", "_id": "6" }}
+{ "date" : "2014-09-16", "name" : "John Smith",  "tweet" : "The Elasticsearch API is really easy to use", "user_id" : 1 }
+{ "create": { "_index": "gb", "_type": "tweet", "_id": "7" }}
+{ "date" : "2014-09-17", "name" : "Mary Jones", "tweet" : "The Query DSL is really powerful and flexible", "user_id" : 2 }
+{ "create": { "_index": "us", "_type": "tweet", "_id": "8" }}
+{ "date" : "2014-09-18", "name" : "John Smith", "user_id" : 1 }
+{ "create": { "_index": "gb", "_type": "tweet", "_id": "9" }}
+{ "date" : "2014-09-19", "name" : "Mary Jones", "tweet" : "Geo-location aggregations are really cool", "user_id" : 2 }
+{ "create": { "_index": "us", "_type": "tweet", "_id": "10" }}
+{ "date" : "2014-09-20", "name" : "John Smith", "tweet" : "Elasticsearch surely is one of the hottest new NoSQL products", "user_id" : 1 }
+{ "create": { "_index": "gb", "_type": "tweet", "_id": "11" }}
+{ "date" : "2014-09-21", "name" : "Mary Jones", "tweet" : "Elasticsearch is built for the cloud, easy to scale", "user_id" : 2 }
+{ "create": { "_index": "us", "_type": "tweet", "_id": "12" }}
+{ "date" : "2014-09-22", "name" : "John Smith", "tweet" : "Elasticsearch and I have left the honeymoon stage, and I still love her.", "user_id" : 1 }
+{ "create": { "_index": "gb", "_type": "tweet", "_id": "13" }}
+{ "date" : "2014-09-23", "name" : "Mary Jones", "tweet" : "So yes, I am an Elasticsearch fanboy", "user_id" : 2 }
+{ "create": { "_index": "us", "_type": "tweet", "_id": "14" }}
+{ "date" : "2014-09-24", "name" : "John Smith", "tweet" : "How many more cheesy tweets do I have to write?", "user_id" : 1 }
+
+
+Search in detail
+----------------
+GET /_search?timeout=10ms
+/gb/_search
+/gb,us/_search
+/g*,u*/_search
+/gb/user/_search
+/_all/user,tweet/_search
+
+Pagination
+----------
+GET /_search?size=5
+GET /_search?size=5&from=5
+GET /_search?size=5&from=10
+
+inverted index
+-------------
+Elasticsearch uses a structure called an inverted index, which is designed to allow very fast full-text 
+searches.
+An inverted index consists of a list of all the unique words that appear in any document, and for each word,
+ a list of the documents in which it appears.
+
+
+Mapping 
+---------
+String: string
+Whole number: byte, short, integer, long
+Floating-point: float, double
+Boolean: boolean
+Date: date
+
+View mapping 
+------------
+GET /gb/_mapping/tweet
+
+changing the analyzer 
+---------------------
+DELETE /gb
+PUT /gb 
+{
+  "mappings": {
+    "tweet" : {
+      "properties" : {
+        "tweet" : {
+          "type" :    "string",
+          "analyzer": "english"
+        },
+        "date" : {
+          "type" :   "date"
+        },
+        "name" : {
+          "type" :   "string"
+        },
+        "user_id" : {
+          "type" :   "long"
+        }
+      }
+    }
+  }
+}
+
+PUT /gb/_mapping/tweet
+{
+  "properties" : {
+    "tag" : {
+      "type" :    "string",
+      "index":    "not_analyzed"
+    }
+  }
+}
+
+GET /gb/_analyze?field=tweet
+{ 
+  "text" : "Black-cats"
+}
+
+
+Multilevel objects
+-------------------
+{
+    "tweet":            "Elasticsearch is very flexible",
+    "user": {
+        "id":           "@johnsmith",
+        "gender":       "male",
+        "age":          26,
+        "name": {
+            "full":     "John Smith",
+            "first":    "John",
+            "last":     "Smith"
+        }
+    }
+}
+
+Mapping 
+--------
+{
+  "gb": {
+    "tweet": { 
+      "properties": {
+        "tweet":            { "type": "string" },
+        "user": { 
+          "type":             "object",
+          "properties": {
+            "id":           { "type": "string" },
+            "gender":       { "type": "string" },
+            "age":          { "type": "long"   },
+            "name":   { 
+              "type":         "object",
+              "properties": {
+                "full":     { "type": "string" },
+                "first":    { "type": "string" },
+                "last":     { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+How inner objects are indexed
+
+{
+    "tweet":            [elasticsearch, flexible, very],
+    "user.id":          [@johnsmith],
+    "user.gender":      [male],
+    "user.age":         [26],
+    "user.name.full":   [john, smith],
+    "user.name.first":  [john],
+    "user.name.last":   [smith]
+}
+
+Full Body search
+-----------------
+GET /_search
+{
+  "from": 30,
+  "size": 10
+}
+
+QueryDSL
+--------
+
+GET /_search
+{
+    "query": YOUR_QUERY_HERE
+}
+
+GET /_search
+{
+    "query": {
+        "match_all": {}
+    }
+}
+
+{
+    QUERY_NAME: {
+        ARGUMENT: VALUE,
+        ARGUMENT: VALUE,...
+    }
+}
+
+{
+    QUERY_NAME: {
+        FIELD_NAME: {
+            ARGUMENT: VALUE,
+            ARGUMENT: VALUE,...
+        }
+    }
+}
+
+GET /_search
+{
+    "query": {
+        "match": {
+            "tweet": "elasticsearch"
+        }
+    }
+}
+
+
+{
+    "bool": {
+        "must":     { "match": { "tweet": "elasticsearch" }},
+        "must_not": { "match": { "name":  "mary" }},
+        "should":   { "match": { "tweet": "full text" }}
+    }
+}
+
+{
+    "bool": {
+        "must": { "match":      { "email": "business opportunity" }},
+        "should": [
+             { "match":         { "starred": true }},
+             { "bool": {
+                   "must":      { "folder": "inbox" }},
+                   "must_not":  { "spam": true }}
+             }}
+        ],
+        "minimum_should_match": 1
+    }
+}
+
+Filter
+-------
+
+Term filter - The term filter is used to filter by exact values, be they numbers, dates, Booleans, 
+ or not_analyzed exact-value string fields:
+
+{ "term": { "age":    26           }}
+{ "term": { "date":   "2014-09-01" }}
+{ "term": { "public": true         }}
+{ "term": { "tag":    "full_text"  }}
+
+{ "terms": { "tag": [ "search", "full_text", "nosql" ] }}
+
+Range filter
+------------
+{
+    "range": {
+        "age": {
+            "gte":  20,
+            "lt":   30
+        }
+    }
+}
+
+exists filter
+--------------
+{
+    "exists":   {
+        "field":    "title"
+    }
+}
+bool filter
+-----------
+{
+    "bool": {
+        "must":     { "term": { "folder": "inbox" }},
+        "must_not": { "term": { "tag":    "spam"  }},
+        "should": [
+                    { "term": { "starred": true   }},
+                    { "term": { "unread":  true   }}
+        ]
+    }
+}
+{
+    "bool": {
+        "must":     { "match": { "title": "how to make millions" }},
+        "must_not": { "match": { "tag":   "spam" }},
+        "should": [
+            { "match": { "tag": "starred" }},
+            { "range": { "date": { "gte": "2014-01-01" }}}
+        ]
+    }
+}
+
+Match 
+---------
+
+{ "match_all": {}}
+{ "match": { "tweet": "About Search" }}
+{
+    "multi_match": {
+        "query":    "full text search",
+        "fields":   [ "title", "body" ]
+    }
+}
+
+Combine query and filter
+------------------------
+{
+    "filtered": {
+        "query":  { "match": { "email": "business opportunity" }},
+        "filter": { "term":  { "folder": "inbox" }}
+    }
+}
+GET /_search
+{
+    "query": {
+        "filtered": {
+            "query":  { "match": { "email": "business opportunity" }},
+            "filter": { "term": { "folder": "inbox" }}
+        }
+    }
+}
+GET /_search
+{
+    "query": {
+        "filtered": {
+            "query":    { "match_all": {}},
+            "filter":   { "term": { "folder": "inbox" }}
+        }
+    }
+}
+
+Validating queries
+-------------------
+GET /gb/tweet/_validate/query
+{
+   "query": {
+      "tweet" : {
+         "match" : "really powerful"
+      }
+   }
+}
+GET /gb/tweet/_validate/query?explain 
+{
+   "query": {
+      "tweet" : {
+         "match" : "really powerful"
+      }
+   }
+}
+
+Sorting 
+-------
+
+GET /_search
+{
+    "query" : {
+        "filtered" : {
+            "filter" : { "term" : { "user_id" : 1 }}
+        }
+    },
+    "sort": { "date": { "order": "desc" }}
+}
+
+Multilevel sorting 
+------------------
+GET /_search
+{
+    "query" : {
+        "filtered" : {
+            "query":   { "match": { "tweet": "manage text search" }},
+            "filter" : { "term" : { "user_id" : 2 }}
+        }
+    },
+    "sort": [
+        { "date":   { "order": "desc" }},
+        { "_score": { "order": "desc" }}
+    ]
+}
+GET /_search?sort=date:desc&sort=_score&q=search
+
+relevence search
+----------------
+GET /_search?explain 
+{
+   "query"   : { "match" : { "tweet" : "honeymoon" }}
+}
+
+Understanding why document match 
+--------------------------------
+GET /us/tweet/12/_explain
+{
+   "query" : {
+      "filtered" : {
+         "filter" : { "term" :  { "user_id" : 2           }},
+         "query" :  { "match" : { "tweet" :   "honeymoon" }}
+      }
+   }
+}
+
+
+Search
+------
+
+DELETE /my_index 
+
+PUT /my_index
+{ "settings": { "number_of_shards": 1 }} 
+
+POST /my_index/my_type/_bulk
+{ "index": { "_id": 1 }}
+{ "title": "The quick brown fox" }
+{ "index": { "_id": 2 }}
+{ "title": "The quick brown fox jumps over the lazy dog" }
+{ "index": { "_id": 3 }}
+{ "title": "The quick brown fox jumps over the quick dog" }
+{ "index": { "_id": 4 }}
+{ "title": "Brown fox brown dog" }
+
+GET /my_index/my_type/_search
+{
+    "query": {
+        "match": {
+            "title": "QUICK!"
+        }
+    }
+}
+GET /my_index/my_type/_search
+{
+    "query": {
+        "match": {
+            "title": "BROWN DOG!"
+        }
+    }
+}
+
+improving precision
+--------------------
+GET /my_index/my_type/_search
+{
+    "query": {
+        "match": {
+            "title": {      
+                "query":    "BROWN DOG!",
+                "operator": "and"
+            }
+        }
+    }
+}
+
+GET /my_index/my_type/_search
+{
+  "query": {
+    "bool": {
+      "must":     { "match": { "title": "quick" }},
+      "must_not": { "match": { "title": "lazy"  }},
+      "should": [
+                  { "match": { "title": "brown" }},
+                  { "match": { "title": "dog"   }}
+      ]
+    }
+  }
+}
+
+GET /_search
+{
+  "query": {
+    "bool": {
+      "should": [
+        { "match": { 
+            "title":  {
+              "query": "War and Peace",
+              "boost": 2
+        }}},
+        { "match": { 
+            "author":  {
+              "query": "Leo Tolstoy",
+              "boost": 2
+        }}},
+        { "bool":  { 
+            "should": [
+              { "match": { "translator": "Constance Garnett" }},
+              { "match": { "translator": "Louise Maude"      }}
+            ]
+        }}
+      ]
+    }
+  }
+}
+
+
+these 2 files in FB group 
+
+gaje85@yahoo.com
+
+gajg@paypal.com
+
+gajendran ganesapandian 
+
+gaje85
+
+
+
+
+
+
+
+
+
+
+
+
