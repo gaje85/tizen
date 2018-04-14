@@ -1,7 +1,7 @@
 
 
   Gajendran
-  16 
+  18
 
   MTS 2 
 
@@ -34,19 +34,13 @@ run elasticsearch.bat
 
 http://localhost:9200/?pretty
 
-install kibana and sense plugin
-
-bin\kibana.bat plugin --install elastic/sense
+install kibana 
 
 start kibana
 
-open sense http://localhost:5601/app/sense
+open  http://localhost:5601 and go to devtools 
 
-Head plugin inside elasticsearch
 
-plugin install mobz/elasticsearch-head
-
-http://localhost:9200/_plugin/head/
 
 --------------------------------------------------------------
 
@@ -266,7 +260,7 @@ RS5,RS3      RS1,RS2          RS4
 
 Shard - A shard is a low-level worker unit that holds just a slice of all the data in the index.
         shard is a single instance of Lucene, and is a complete search engine in its own right.
-        Our documents are stored and indexed in shards, but our applications donít talk to them directly.
+        Our documents are stored and indexed in shards, but our applications don‚Äôt talk to them directly.
         Instead, they talk to an index.
 	Think of shards as containers for data.
         Documents are stored in shards, and shards are allocated to nodes in your cluster.
@@ -452,7 +446,7 @@ Stop words are the most frequent and almost useless words
 Analysis is a process that consists of the following:
 
 First, tokenizing a block of text into individual terms suitable for use in an inverted index,
-Then normalizing these terms into a standard form to improve their ìsearchability,î or recall
+Then normalizing these terms into a standard form to improve their ‚Äúsearchability,‚Äù or recall
 
 Character filters
 First, the string is passed through any character filters in turn. 
@@ -481,19 +475,19 @@ Unicode Consortium, and removes most punctuation. Finally, it lowercases all ter
 set, the, shape, to, semi, transparent, by, calling, set_trans, 5
 
 Simple analyzer
-The simple analyzer splits the text on anything that isnít a letter, and lowercases the terms.
+The simple analyzer splits the text on anything that isn‚Äôt a letter, and lowercases the terms.
  It would produce
 set, the, shape, to, semi, transparent, by, calling, set, trans
 
 Whitespace analyzer
-The whitespace analyzer splits the text on whitespace. It doesnít lowercase. 
+The whitespace analyzer splits the text on whitespace. It doesn‚Äôt lowercase. 
 Language analyzers
 Set, the, shape, to, semi-transparent, by, calling, set_trans(5)
 
 Language analyzers
 Language-specific analyzers are available for many languages. They are able to take the peculiarities 
 of the specified language into account. For instance, the english analyzer comes with a set of 
-English stopwords (common words like and or the that donít have much impact on relevance), which it removes.
+English stopwords (common words like and or the that don‚Äôt have much impact on relevance), which it removes.
 
 set, shape, semi, transpar, call, set_tran, 5
 
